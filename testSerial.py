@@ -47,7 +47,6 @@ def decodeOSC(data):
 		decoded.append(time)
 		while len(rest)>0:
 			length, rest = _readInt(rest)
-			print("length="+str(length))
 			decoded.append(decodeOSC(rest[:length]))
 			rest = rest[length:]
 
@@ -74,7 +73,6 @@ def _readInt(data):
 	as a 32-bit integer. """
 	
 	if(len(data)<4):
-		print "Error: too few bytes for int", data, len(data)
 		rest = data
 		integer = 0
 	else:
@@ -101,7 +99,6 @@ def _readFloat(data):
 	"""
 	
 	if(len(data)<4):
-		print "Error: too few bytes for float", data, len(data)
 		rest = data
 		float = 0
 	else:
@@ -116,7 +113,6 @@ def _readDouble(data):
 	"""
 	
 	if(len(data)<8):
-		print "Error: too few bytes for double", data, len(data)
 		rest = data
 		float = 0
 	else:
@@ -124,18 +120,6 @@ def _readDouble(data):
 		rest  = data[8:]
 
 	return (float, rest)
-OSCtrans = string.maketrans("{,}?","(|).")
-def getRegEx(pattern):
-	"""Compiles and returns a 'regular expression' object for the given address-pattern.
-	"""
-	# Translate OSC-address syntax to python 're' syntax
-	pattern = pattern.replace(".", r"\.")		# first, escape all '.'s in the pattern.
-	pattern = pattern.replace("(", r"\(")		# escape all '('s.
-	pattern = pattern.replace(")", r"\)")		# escape all ')'s.
-	pattern = pattern.replace("*", r".*")		# replace a '*' by '.*' (match 0 or more characters)
-	pattern = pattern.translate(OSCtrans)		# change '?' to '.' and '{,}' to '(|)'
-	
-	return re.compile(pattern)
 
 rs232 = serial.Serial(
     port = 'COM3',
@@ -179,7 +163,3 @@ while clock()-start <1:
                             [2*qx*qz-2*qy*qw,2*qy*qz+2*qx*qw,1-2*qx**2-2*qy**2]])
     		trueAcceleration = np.matmul(np.linalg.inv(rotationMatrix), np.matrix([[0],[0],[.3]]))
  			# Get 3 True acceleration then pop() first and append() last
-    
-  
-
-print count
