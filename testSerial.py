@@ -1,45 +1,22 @@
 import serial
 from time import clock
 import numpy as np
-import math, re, socket, select, string, struct, sys, threading, time, types, array, errno, inspect
-global NTP_epoch
-from calendar import timegm
-NTP_epoch = timegm((1900,1,1,0,0,0)) # NTP time started in 1 Jan 1900
-del timegm
-
-global NTP_units_per_second
-NTP_units_per_second = 0x100000000 # about 232 picoseconds
-
-replies=[]
+import math, struct
 #callbacks={"/sensors":sensorsHandler,"/quaternion":quaternionHandler,"/battery":batteryHandler,"/humidity":humidityHandler,"/temperature":temperatureHandler}
 def _readString(data):
 	"""Reads the next (null-terminated) block of data
 	"""
-	length   = string.find(data,"\0")
+	length   = data.find(b'\x00')
 	nextData = int(math.ceil((length+1) / 4.0) * 4)
 	return (data[0:length], data[nextData:])
-def _readTimeTag(data):
-	"""Tries to interpret the next 8 bytes of the data
-	as a TimeTag.
-	 """
-	high, low = struct.unpack(">LL", data[0:8])
-	if (high == 0) and (low <= 1):
-		time = 0.0
-	else:
-		time = int(NTP_epoch + high) + float(low / NTP_units_per_second)
-	rest = data[8:]
-	return (time, rest)
+
 def decodeOSC(data):
 	"""Converts a binary OSC message to a Python list. 
 	"""
-	table = {"i":_readInt, "f":_readFloat, "s":_readString, "b":_readBlob, "d":_readDouble, "t":_readTimeTag}
+	table = {105:_readInt, 102:_readFloat, 115:_readString, 98:_readBlob, 100:_readDouble}
 	decoded = []
 	address,  rest = _readString(data)
-	if address.startswith(","):
-		typetags = address
-		address = ""
-	else:
-		typetags = ""
+	typetags = ""
 
 	if address == "#bundle":
 		time, rest = _readTimeTag(rest)
@@ -55,7 +32,7 @@ def decodeOSC(data):
 			typetags, rest = _readString(rest)
 		decoded.append(address)
 		decoded.append(typetags)
-		if typetags.startswith(","):
+		if typetags.startswith(b','):
 			
 			for tag in typetags[1:]:
 				value, rest = table[tag](rest)
