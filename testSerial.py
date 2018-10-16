@@ -157,14 +157,12 @@ start=clock()  # .read() returns bytes right?
 while clock()-start <1:
     if rs232.in_waiting > 0:
     	buffer+=rs232.read()
-    	"""
-    	if(buffer.find(b'/sensors',0,len(buffer))!=-1):
-    		a=buffer.find(b'/sensors',0,len(buffer))
-    		print "Sensors"
+    	if(buffer.find(b'/earth',0,len(buffer))!=-1):
+    		a=buffer.find(b'/earth',0,len(buffer))
     		buffer=buffer[a:]
-    		buffer+=rs232.read(65)
+    		buffer+=rs232.read(36)
     		decoded=decodeOSC(buffer)
-    		print decoded"""
+    		earths.append(decoded[2:])
     	if(buffer.find(b'/quaternion',0,len(buffer))!=-1):
     		count+=1
     		a=buffer.find(b'/quaternion',0,len(buffer))
@@ -172,7 +170,6 @@ while clock()-start <1:
     		buffer+=rs232.read(40)
     		decoded=decodeOSC(buffer)
     		result = decoded[2:]
-
     		qw = result[0]
     		qx = result[1]
     		qy = result[2]
