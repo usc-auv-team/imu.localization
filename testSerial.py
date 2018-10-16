@@ -1,5 +1,6 @@
 import serial
-#import OSC
+from time import clock
+import numpy as np
 import math, re, socket, select, string, struct, sys, threading, time, types, array, errno, inspect
 global NTP_epoch
 from calendar import timegm
@@ -10,21 +11,7 @@ global NTP_units_per_second
 NTP_units_per_second = 0x100000000 # about 232 picoseconds
 
 replies=[]
-def sensorsHandler(add, tags, args):
-	print add + str(args)
-
-def quaternionHandler(add, tags, args):
-    print add + str(args)
-
-def batteryHandler(add, tags, args):
-	#print add + str(args)
-	#return add + str(args)
-	pass
-def humidityHandler(add,tags,args):
-	pass
-def temperatureHandler(add,tags,args):
-	pass
-callbacks={"/sensors":sensorsHandler,"/quaternion":quaternionHandler,"/battery":batteryHandler,"/humidity":humidityHandler,"/temperature":temperatureHandler}
+#callbacks={"/sensors":sensorsHandler,"/quaternion":quaternionHandler,"/battery":batteryHandler,"/humidity":humidityHandler,"/temperature":temperatureHandler}
 def _readString(data):
 	"""Reads the next (null-terminated) block of data
 	"""
@@ -69,7 +56,6 @@ def decodeOSC(data):
 			typetags, rest = _readString(rest)
 		decoded.append(address)
 		decoded.append(typetags)
-		print("This is TypeTags:"+typetags)
 		if typetags.startswith(","):
 			
 			for tag in typetags[1:]:
@@ -150,44 +136,6 @@ def getRegEx(pattern):
 	pattern = pattern.translate(OSCtrans)		# change '?' to '.' and '{,}' to '(|)'
 	
 	return re.compile(pattern)
-def dispatchMessage(pattern, tags, data):
-	global callbacks
-	expr = getRegEx(pattern)
-	replies = []
-	matched = 0
-	for addr in callbacks.keys():
-		match = expr.match(addr)
-		if match and (match.end() == len(addr)):
-			reply = callbacks[addr](pattern, tags, data)
-			matched += 1
-			replies.append(reply)
-	
-	return replies
-
-def _unbundle(decoded):
-	global replies
-	"""Recursive bundle-unpacking function"""
-	if decoded[0] != "#bundle":
-		replies += dispatchMessage(decoded[0], decoded[1][1:], decoded[2:])
-		return
-
-	now = time.time()
-	timetag = decoded[1]
-	if (timetag > 0.) and (timetag > now):
-		time.sleep(timetag - now)
-	
-	for msg in decoded[2:]:
-		_unbundle(msg)
-	
-def handle(packet):
-	"""Handle incoming OSCMessage
-	"""
-	decoded = decodeOSC(packet)
-	if not len(decoded):
-		return
-	
-	_unbundle(decoded)
-
 
 rs232 = serial.Serial(
     port = 'COM3',
@@ -203,23 +151,38 @@ rs232 = serial.Serial(
 # print "##########################################"
 # print "##########################################"
 # print decoded
-buffer = bytes()  # .read() returns bytes right?
-while True:
+buffer = bytes()
+count=0
+start=clock()  # .read() returns bytes right?
+while clock()-start <1:
     if rs232.in_waiting > 0:
     	buffer+=rs232.read()
-
+    	"""
     	if(buffer.find(b'/sensors',0,len(buffer))!=-1):
     		a=buffer.find(b'/sensors',0,len(buffer))
     		print "Sensors"
     		buffer=buffer[a:]
     		buffer+=rs232.read(65)
     		decoded=decodeOSC(buffer)
-    		print decoded
+    		print decoded"""
     	if(buffer.find(b'/quaternion',0,len(buffer))!=-1):
+    		count+=1
     		a=buffer.find(b'/quaternion',0,len(buffer))
     		buffer=buffer[a:]
     		buffer+=rs232.read(40)
     		decoded=decodeOSC(buffer)
-    		print "Quaternion"
-    		print decoded
+    		result = decoded[2:]
 
+    		qw = result[0]
+    		qx = result[1]
+    		qy = result[2]
+    		qz = result[3]
+    		rotationMatrix = np.matrix([[1-2*qy**2-2*qz**2,2*qx*qy-2*qz*qw,2*qx*qz+2*qy*qw],
+                            [2*qx*qy+2*qz*qw,1-2*qx**2-2*qz**2,2*qy*qz-2*qx*qw],
+                            [2*qx*qz-2*qy*qw,2*qy*qz+2*qx*qw,1-2*qx**2-2*qy**2]])
+    		trueAcceleration = np.matmul(np.linalg.inv(rotationMatrix), np.matrix([[0],[0],[.3]]))
+ 			# Get 3 True acceleration then pop() first and append() last
+    
+  
+
+print count
