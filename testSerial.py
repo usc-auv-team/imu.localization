@@ -12,7 +12,6 @@ ini_vd=0.0
 ini_dn=0.0
 ini_de=0.0
 ini_dd=0.0
-#callbacks={"/sensors":sensorsHandler,"/quaternion":quaternionHandler,"/battery":batteryHandler,"/humidity":humidityHandler,"/temperature":temperatureHandler}
 def _readString(data):
 	"""Reads the next (null-terminated) block of data
 	"""
