@@ -2,6 +2,16 @@ import serial
 from time import clock
 import numpy as np
 import math, struct
+from collections import deque
+ini_an=0.0
+ini_ae=0.0
+ini_ad=0.0
+ini_vn=0.0
+ini_ve=0.0
+ini_vd=0.0
+ini_dn=0.0
+ini_de=0.0
+ini_dd=0.0
 #callbacks={"/sensors":sensorsHandler,"/quaternion":quaternionHandler,"/battery":batteryHandler,"/humidity":humidityHandler,"/temperature":temperatureHandler}
 def _readString(data):
 	"""Reads the next (null-terminated) block of data
@@ -9,6 +19,28 @@ def _readString(data):
 	length   = data.find(b'\x00')
 	nextData = int(math.ceil((length+1) / 4.0) * 4)
 	return (data[0:length], data[nextData:])
+
+def get_Roll_Pitch_Yaw(eulers):
+	return eulers[-1]
+
+def get_displacement(earths):
+	an,ae,ad=earths[-1]
+	vn=ini_vn+((an+ini_an)/2.0)*(1/200)
+	ve=ini_ve+((ae+ini_ae)/2.0)*(1/200)
+	vd=ini_vd+((ad+ini_ad)/2.0)*(1/200)
+	dn=ini_dn+((vn+ini_vn)/2.0)*(1/200)
+	de=ini_de+((ve+ini_ve)/2.0)*(1/200)
+	dd=ini_dd+((vd+ini_vd)/2.0)*(1/200)
+	ini_an=an
+	ini_ae=ae
+	ini_ad=ad
+	ini_vn=vn
+	ini_ve=ve
+	ini_vd=vd
+	ini_dn=dn
+	ini_de=de
+	ini_dd=dd
+	return (dn,de,dd)
 
 def decodeOSC(data):
 	"""Converts a binary OSC message to a Python list. 
@@ -112,6 +144,7 @@ rs232 = serial.Serial(
 # print "##########################################"
 # print "##########################################"
 # print decoded
+earths=deque(maxlen=50)
 buffer = bytes()
 count=0
 start=clock()  # .read() returns bytes right?
@@ -131,12 +164,6 @@ while clock()-start <1:
     		buffer+=rs232.read(40)
     		decoded=decodeOSC(buffer)
     		result = decoded[2:]
-    		qw = result[0]
-    		qx = result[1]
-    		qy = result[2]
-    		qz = result[3]
-    		rotationMatrix = np.matrix([[1-2*qy**2-2*qz**2,2*qx*qy-2*qz*qw,2*qx*qz+2*qy*qw],
-                            [2*qx*qy+2*qz*qw,1-2*qx**2-2*qz**2,2*qy*qz-2*qx*qw],
-                            [2*qx*qz-2*qy*qw,2*qy*qz+2*qx*qw,1-2*qx**2-2*qy**2]])
-    		trueAcceleration = np.matmul(np.linalg.inv(rotationMatrix), np.matrix([[0],[0],[.3]]))
+    	displacement_north,displacement_east,displacement_down=get_displacement(earths)
+    	
  			# Get 3 True acceleration then pop() first and append() last
