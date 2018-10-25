@@ -3,7 +3,8 @@ from time import clock
 import numpy as np
 import math, struct
 from collections import deque
-ini_an=0.0
+import sys
+ini_an=np.longDouble()
 ini_ae=0.0
 ini_ad=0.0
 ini_vn=0.0
@@ -19,17 +20,37 @@ def _readString(data):
 	nextData = int(math.ceil((length+1) / 4.0) * 4)
 	return (data[0:length], data[nextData:])
 
-def get_Roll_Pitch_Yaw(eulers):
-	return eulers[-1]
+def get_Roll_Pitch_Yaw(quaternions):
+	return quaternions[-1]
 
 def get_displacement(earths):
+	global ini_an
+	global ini_ae
+	global ini_ad
+	global ini_vn
+	global ini_ve
+	global ini_vd
+	global ini_dn
+	global ini_de
+	global ini_dd
 	an,ae,ad=earths[-1]
-	vn=ini_vn+((an+ini_an)/2.0)*(1/200)
-	ve=ini_ve+((ae+ini_ae)/2.0)*(1/200)
-	vd=ini_vd+((ad+ini_ad)/2.0)*(1/200)
-	dn=ini_dn+((vn+ini_vn)/2.0)*(1/200)
-	de=ini_de+((ve+ini_ve)/2.0)*(1/200)
-	dd=ini_dd+((vd+ini_vd)/2.0)*(1/200)
+	print("Original Acceleration:")
+	print(earths[-1])
+	# vn=ini_vn+((an+ini_an)*0.5)*0.005
+	# ve=ini_ve+((ae+ini_ae)*0.5)*0.005
+	# vd=ini_vd+((ad+ini_ad)*0.5)*0.005
+	# dn=ini_dn+((vn+ini_vn)*0.5)*0.005
+	# de=ini_de+((ve+ini_ve)*0.5)*0.005
+	# dd=ini_dd+((vd+ini_vd)*0.5)*0.005
+	vn=ini_vn+an*0.005
+	ve=ini_ve+ae*0.005
+	vd=ini_vd+ad*0.005
+	dn=ini_dn+vn+ 0.5*an*0.005*0.005
+	de=ini_de+ve+ 0.5*ae*0.005*0.005
+	dd=ini_dd+vd+ 0.5*ad*0.005*0.005
+	print(str(dd))
+
+	print (ini_vd,vd,((vd+ini_vd)*0.5),((vd+ini_vd)*0.5)*0.005)
 	ini_an=an
 	ini_ae=ae
 	ini_ad=ad
@@ -39,12 +60,14 @@ def get_displacement(earths):
 	ini_dn=dn
 	ini_de=de
 	ini_dd=dd
+	print("After Updating:")
+	print(ini_dn,ini_de,ini_dd)
 	return (dn,de,dd)
 
 def decodeOSC(data):
 	"""Converts a binary OSC message to a Python list. 
 	"""
-	table = {105:_readInt, 102:_readFloat, 115:_readString, 98:_readBlob, 100:_readDouble}
+	table = {"i":_readInt, "f":_readFloat, "s":_readString, "b":_readBlob, "d":_readDouble}
 	decoded = []
 	address,  rest = _readString(data)
 	typetags = ""
@@ -137,17 +160,13 @@ rs232 = serial.Serial(
     bytesize = serial.EIGHTBITS,
     timeout = 1
 )
-# hexstring="2f 7175 6174 6572 6e69 6f6e 002c 6666 6666 0000 003f 764e b83b d250 053d 1460 e13e 870d 0a0d 0a14 c0"
-# to_string=bytearray.fromhex(hexstring)
-# decoded=decodeOSC(to_string)
-# print "##########################################"
-# print "##########################################"
-# print decoded
+
 earths=deque(maxlen=50)
+quaternions=deque(maxlen=50)
 buffer = bytes()
 count=0
 start=clock()  # .read() returns bytes right?
-while clock()-start <1:
+while start-clock()<1:
     if rs232.in_waiting > 0:
     	buffer+=rs232.read()
     	if(buffer.find(b'/earth',0,len(buffer))!=-1):
@@ -156,13 +175,16 @@ while clock()-start <1:
     		buffer+=rs232.read(36)
     		decoded=decodeOSC(buffer)
     		earths.append(decoded[2:])
+    		displacement_north,displacement_east,displacement_down=get_displacement(earths)
+    		print("Displacements")
+    		print (displacement_north,displacement_east,displacement_down)
     	if(buffer.find(b'/quaternion',0,len(buffer))!=-1):
-    		count+=1
     		a=buffer.find(b'/quaternion',0,len(buffer))
     		buffer=buffer[a:]
     		buffer+=rs232.read(40)
     		decoded=decodeOSC(buffer)
-    		result = decoded[2:]
-    	displacement_north,displacement_east,displacement_down=get_displacement(earths)
+    		quaternions.append(decoded)
+    		#Roll,pitch,Yaw=get_Roll_Pitch_Yaw(quaternions)
+
     	
  			# Get 3 True acceleration then pop() first and append() last
