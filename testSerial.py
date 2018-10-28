@@ -23,6 +23,19 @@ def _readString(data):
 def get_Roll_Pitch_Yaw(quaternions):
 	return quaternions[-1]
 
+v_int=[0,0,0]
+s_int=[0,0,0]
+t_int=.05
+def integrateAcceleration(a0,at):
+
+        for i in range(3):
+
+            #a[i]=float("%.2f" % self.a[i])
+			#a[i]=a[i]-temp[i]
+			v_int[i]=v[i]+a[i]*t_int
+			#v[i]=float("%.2f" % v[i])
+			s_int[i]=s[i]+v[i]+0.5*a[i]*math.pow(t_int,2.0)
+
 def get_displacement(earths):
 	global ini_an
 	global ini_ae
@@ -65,7 +78,7 @@ def get_displacement(earths):
 	return (dn,de,dd)
 
 def decodeOSC(data):
-	"""Converts a binary OSC message to a Python list. 
+	"""Converts a binary OSC message to a Python list.
 	"""
 	table = {"i":_readInt, "f":_readFloat, "s":_readString, "b":_readBlob, "d":_readDouble}
 	decoded = []
@@ -87,7 +100,7 @@ def decodeOSC(data):
 		decoded.append(address)
 		decoded.append(typetags)
 		if typetags.startswith(b','):
-			
+
 			for tag in typetags[1:]:
 				value, rest = table[tag](rest)
 				decoded.append(value)
@@ -102,7 +115,7 @@ def _readBlob(data):
 def _readInt(data):
 	"""Tries to interpret the next 4 bytes of the data
 	as a 32-bit integer. """
-	
+
 	if(len(data)<4):
 		rest = data
 		integer = 0
@@ -126,9 +139,9 @@ def _readLong(data):
 
 def _readFloat(data):
 	"""Tries to interpret the next 4 bytes of the data
-	as a 32-bit float. 
+	as a 32-bit float.
 	"""
-	
+
 	if(len(data)<4):
 		rest = data
 		float = 0
@@ -140,9 +153,9 @@ def _readFloat(data):
 
 def _readDouble(data):
 	"""Tries to interpret the next 8 bytes of the data
-	as a 64-bit float. 
+	as a 64-bit float.
 	"""
-	
+
 	if(len(data)<8):
 		rest = data
 		float = 0
@@ -186,5 +199,5 @@ while start-clock()<1:
     		quaternions.append(decoded)
     		#Roll,pitch,Yaw=get_Roll_Pitch_Yaw(quaternions)
 
-    	
+
  			# Get 3 True acceleration then pop() first and append() last
