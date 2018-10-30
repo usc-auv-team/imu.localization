@@ -1,10 +1,12 @@
+from __future__ import print_function
 import serial
 from time import clock
 import numpy as np
 import math, struct
 from collections import deque
 import sys
-ini_an=np.longDouble()
+import glob
+ini_an=np.longdouble()
 ini_ae=0.0
 ini_ad=0.0
 ini_vn=0.0
@@ -26,16 +28,15 @@ def get_Roll_Pitch_Yaw(quaternions):
 v_int=[0,0,0]
 s_int=[0,0,0]
 t_int=.05
+"""
 def integrateAcceleration(a0,at):
-
         for i in range(3):
-
-            #a[i]=float("%.2f" % self.a[i])
+			#a[i]=float("%.2f" % self.a[i])
 			#a[i]=a[i]-temp[i]
 			v_int[i]=v[i]+a[i]*t_int
 			#v[i]=float("%.2f" % v[i])
 			s_int[i]=s[i]+v[i]+0.5*a[i]*math.pow(t_int,2.0)
-
+"""
 def get_displacement(earths):
 	global ini_an
 	global ini_ae
@@ -47,8 +48,8 @@ def get_displacement(earths):
 	global ini_de
 	global ini_dd
 	an,ae,ad=earths[-1]
-	print("Original Acceleration:")
-	print(earths[-1])
+	#print("Original Acceleration:", end='\r')
+	#print(earths[-1], end="\r")
 	# vn=ini_vn+((an+ini_an)*0.5)*0.005
 	# ve=ini_ve+((ae+ini_ae)*0.5)*0.005
 	# vd=ini_vd+((ad+ini_ad)*0.5)*0.005
@@ -61,9 +62,9 @@ def get_displacement(earths):
 	dn=ini_dn+vn+ 0.5*an*0.005*0.005
 	de=ini_de+ve+ 0.5*ae*0.005*0.005
 	dd=ini_dd+vd+ 0.5*ad*0.005*0.005
-	print(str(dd))
+	#print(str(dd), end='\r')
 
-	print (ini_vd,vd,((vd+ini_vd)*0.5),((vd+ini_vd)*0.5)*0.005)
+	#print (ini_vd,vd,((vd+ini_vd)*0.5),((vd+ini_vd)*0.5)*0.005, end='\r')
 	ini_an=an
 	ini_ae=ae
 	ini_ad=ad
@@ -73,8 +74,8 @@ def get_displacement(earths):
 	ini_dn=dn
 	ini_de=de
 	ini_dd=dd
-	print("After Updating:")
-	print(ini_dn,ini_de,ini_dd)
+	#print("After Updating:")
+	#print(ini_dn,ini_de,ini_dd, end="\r")
 	return (dn,de,dd)
 
 def decodeOSC(data):
@@ -165,8 +166,30 @@ def _readDouble(data):
 
 	return (float, rest)
 
+def serial_ports():
+	if sys.platform.startswith('win'):
+		ports = ['COM%s' % (i + 1) for i in range(256)]
+	elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+		# this excludes your current terminal "/dev/tty"
+		ports = glob.glob('/dev/tty[A-Za-z]*')
+	elif sys.platform.startswith('darwin'):
+		ports = glob.glob('/dev/tty.*')
+	else:
+		raise EnvironmentError('Unsupported platform')
+	result = []
+	for port in ports:
+		try:
+			s = serial.Serial(port)
+			s.close()
+			result.append(port)
+		except (OSError, serial.SerialException):
+			pass
+	return result
+
+
+
 rs232 = serial.Serial(
-    port = 'COM3',
+    port = serial_ports()[0],
     baudrate = 115200,
     parity = serial.PARITY_NONE,
     stopbits = serial.STOPBITS_ONE,
@@ -189,8 +212,9 @@ while start-clock()<1:
     		decoded=decodeOSC(buffer)
     		earths.append(decoded[2:])
     		displacement_north,displacement_east,displacement_down=get_displacement(earths)
-    		print("Displacements")
-    		print (displacement_north,displacement_east,displacement_down)
+    		#print("Displacements", end="\r")
+
+			print (displacement_north,displacement_east,displacement_down, end="\r")
     	if(buffer.find(b'/quaternion',0,len(buffer))!=-1):
     		a=buffer.find(b'/quaternion',0,len(buffer))
     		buffer=buffer[a:]
